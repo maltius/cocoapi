@@ -1,0 +1,499 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct  6 18:34:39 2020
+
+@author: altius
+"""
+
+# import tools and apis
+
+from pycocotools.coco import COCO
+import numpy as np
+import skimage.io as io
+import matplotlib.pyplot as plt
+import pylab
+import requests
+import cv2
+import time
+
+persons_img_path = '/mnt/sda1/downloads/cocoapi-master/PythonAPI/persons1/'
+persons_img_path_all = '/mnt/sda1/downloads/cocoapi-master/PythonAPI/persons_all17/'
+
+
+
+# just person samples for 
+only_person = False
+
+pylab.rcParams['figure.figsize'] = (8.0, 10.0)
+
+if only_person:
+    
+    # to get the filtered.json for a specific category simply run 
+    # python filter.py --input_json instances_train2017.json --output_json filtered.json --categories person 
+    
+    dataDir='..'
+    dataType='val2017'
+    annFile1='annotations/filtered.json'
+    coco=COCO(annFile1)
+
+else:
+    
+    dataDir='..'
+    dataType='val2017'
+    annFile1='annotations/filtered.json'
+    coco1=COCO(annFile1)
+
+    dataDir='..'
+    dataType='val2017'
+    annFile='annotations/instances_{}.json'.format(dataType)
+    coco=COCO(annFile)
+
+annFile = 'annotations/coco_wholebody_train_v1.0.json'
+coco_kps=COCO(annFile)
+# coco=COCO(annFile)
+
+catIds = coco1.getCatIds(catNms=['person'])
+# Get the corresponding image ids and images using loadImgs
+imgIds_filtered = coco1.getImgIds(catIds=catIds)
+filtered_images = coco1.loadImgs(imgIds_filtered)
+
+annotated_dict=coco_kps.anns
+image_list=[]
+ann_list=[]
+
+for i in annotated_dict.keys():
+    temp=annotated_dict[i]
+    ann_list.append(annotated_dict[i])
+    
+    image_list.append(temp['image_id'])
+
+set_image_list=set(image_list)
+temp1=list(set_image_list)
+image_array=np.array(image_list)
+
+counter = 0
+real_index=list([])
+label=np.zeros((118015,17,3))
+file_names=list([])
+
+
+
+for ind , t in enumerate(imgIds_filtered):
+    
+    if ind < 10000000:
+        
+        im = filtered_images[ind]
+        I = cv2.imread(persons_img_path+'coco'+im['file_name'])
+
+        ii = np.where(image_array == t)[0]
+
+        c0=0
+        for ind1,k in enumerate(ii):
+            print(k)
+            print('index: {}, nth person: {}'.format(ind,c0))
+            real_index.append(k)
+            temp_info=ann_list[k]
+            body_points=temp_info['keypoints']
+            
+            nonzeroind = np.nonzero(body_points) 
+            save_cond=1
+            imres=0
+            if nonzeroind[0].shape[0]>50.5 and I is not None:
+                
+                # print('index: {}'.format(index))
+    
+                bbox=np.array(temp_info['bbox']).astype(int)
+                s1=bbox[1]+bbox[3]
+                s2=bbox[0]+bbox[2]
+                crop_img = I[max(1,bbox[1]-int(0.1*bbox[3])):s1, max(1,int(bbox[0]-0.1*bbox[2])):s2]
+                
+                # plt.axis('off')
+                # plt.imshow(I)
+                # plt.show()
+                
+                # plt.axis('off')
+                # plt.imshow(crop_img)
+                # plt.show()save_cond=0
+                if bbox[3]>25 and bbox[2]>25:
+                    
+                    bod=np.reshape(body_points,(17,3))
+                    bod[:,2]=np.zeros((17,))
+                    for x in range(0,17):
+                        if bod[x,0]>0 and bod[x,1]>0:
+                            bod[x,1]=bod[x,1]-max(1,bbox[1]-int(0.1*bbox[3]))
+                            if bod[x,1]<0:
+                                save_cond=0
+                                print('Errrorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',x)
+                                # time.sleep(2)
+                            if bod[x,1]>250:
+                                imres=1 
+                            bod[x,0]=bod[x,0]-max(1,int(bbox[0]-0.1*bbox[2]))
+                            if bod[x,0]<0:
+                                save_cond=0
+                                print('Errrorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',x)
+                            if bod[x,0]>250:
+                                imres=1
+                                
+                    if save_cond==1:
+                        file_names.append(persons_img_path_all+'cropped_'+str(c0).zfill(2)+'_'+str(k).zfill(8)+'_'+im['file_name'])
+                        if imres==0:
+                            cv2.imwrite(persons_img_path_all+'cropped_'+str(c0).zfill(2)+'_'+str(k).zfill(8)+'_'+im['file_name'],crop_img)
+                            fd=1
+                        else:
+
+                            scale=max(crop_img.shape[1]/250,crop_img.shape[0]/250)
+                            
+                            width = int(crop_img.shape[1]/scale)
+                            height = int(crop_img.shape[0] /scale)
+                            
+                            # dsize
+                            dsize = (width, height)
+                            bod=bod/scale
+                            bod[:,2]=np.zeros((17,))
+
+                            for x in range(0,17):
+                                if bod[x,0]>250 or bod[x,1]>250:
+                                    print('Errrorrrrrrrrrrrrrrrppppppppppppppppprrrrrrrr',x)
+                                    # time.sleep(2)
+                                    
+                            # resize image
+                            output = cv2.resize(crop_img, dsize)
+                            cv2.imwrite(persons_img_path_all+'cropped_'+str(c0).zfill(2)+'_'+str(k).zfill(8)+'_'+im['file_name'],output)
+              
+                                    
+                        label[counter,:,:]=bod.astype(float)
+                        counter=counter+1
+                    
+            c0=c0+1
+            
+            
+    
+    # if ind < 10000000:
+        
+    #     im = filtered_images[ind]
+    #     I = cv2.imread(persons_img_path+'coco'+im['file_name'])
+
+    #     ii = np.where(image_array == t)[0]
+
+    #     c0=0
+    #     for ind1,k in enumerate(ii):
+    #         print(k)
+    #         print('index: {}, nth person: {}'.format(ind,c0))
+    #         real_index.append(k)
+    #         temp_info=ann_list[k]
+    #         body_points=temp_info['keypoints']
+            
+    #         nonzeroind = np.nonzero(body_points) 
+    #         save_cond=1
+    #         imres=0
+    #         if nonzeroind[0].shape[0]>9 and I is not None:
+                
+    #             # print('index: {}'.format(index))
+    
+    #             bbox=np.array(temp_info['bbox']).astype(int)
+    #             s1=bbox[1]+bbox[3]
+    #             s2=bbox[0]+bbox[2]
+    #             crop_img = I[max(1,bbox[1]-int(0.1*bbox[3])):s1, max(1,int(bbox[0]-0.1*bbox[2])):s2]
+                
+    #             # plt.axis('off')
+    #             # plt.imshow(I)
+    #             # plt.show()
+                
+    #             # plt.axis('off')
+    #             # plt.imshow(crop_img)
+    #             # plt.show()save_cond=0
+    #             if bbox[3]>25 and bbox[2]>25:
+                    
+    #                 bod=np.reshape(body_points,(17,3))
+    #                 bod[:,2]=np.zeros((17,))
+    #                 for x in range(0,17):
+    #                     if bod[x,0]>0 and bod[x,1]>0:
+    #                         bod[x,1]=bod[x,1]-max(1,bbox[1]-int(0.1*bbox[3]))
+    #                         if bod[x,1]<0:
+    #                             save_cond=0
+    #                             print('Errrorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',x)
+    #                             # time.sleep(2)
+    #                         if bod[x,1]>250:
+    #                             imres=1 
+    #                         bod[x,0]=bod[x,0]-max(1,int(bbox[0]-0.1*bbox[2]))
+    #                         if bod[x,0]<0:
+    #                             save_cond=0
+    #                             print('Errrorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',x)
+    #                         if bod[x,0]>250:
+    #                             imres=1
+                                
+    #                 if save_cond==1:
+    #                     file_names.append(persons_img_path_all+'cropped_'+str(c0).zfill(2)+'_'+str(k).zfill(8)+'_'+im['file_name'])
+    #                     if imres==0:
+    #                         cv2.imwrite(persons_img_path_all+'cropped_'+str(c0).zfill(2)+'_'+str(k).zfill(8)+'_'+im['file_name'],crop_img)
+    #                     else:
+                            
+                            
+                            
+    #                         scale=max(crop_img.shape[1]/250,crop_img.shape[0]/250)
+                            
+    #                         width = int(crop_img.shape[1]/scale)
+    #                         height = int(crop_img.shape[0] /scale)
+                            
+    #                         # dsize
+    #                         dsize = (width, height)
+    #                         bod=bod/scale
+    #                         # resize image
+    #                         output = cv2.resize(crop_img, dsize)
+    #                         cv2.imwrite(persons_img_path_all+'cropped_'+str(c0).zfill(2)+'_'+str(k).zfill(8)+'_'+im['file_name'],output)
+              
+                                    
+    #                     # label[counter,:,:]=bod.astype(float)
+    #                     counter=counter+1
+
+
+                    
+    #         c0=c0+1
+
+# counter = 0
+# real_index=list([])
+# label=np.zeros((40594,17,3))
+# file_names=list([])
+
+# for ind , t in enumerate(imgIds_filtered):
+    
+#     if ind < 10000000:
+        
+#         im = filtered_images[ind]
+#         I = cv2.imread(persons_img_path+'coco'+im['file_name'])
+
+#         ii = np.where(image_array == t)[0]
+
+#         c0=0
+#         for ind1,k in enumerate(ii):
+#             print(k)
+#             print('index: {}, nth person: {}'.format(ind,c0))
+#             real_index.append(k)
+#             temp_info=ann_list[k]
+#             body_points=temp_info['keypoints']
+            
+#             nonzeroind = np.nonzero(body_points) 
+#             save_cond=1
+#             imres=0
+#             if nonzeroind[0].shape[0]>9 and I is not None:
+                
+#                 # print('index: {}'.format(index))
+    
+#                 bbox=np.array(temp_info['bbox']).astype(int)
+#                 s1=bbox[1]+bbox[3]
+#                 s2=bbox[0]+bbox[2]
+#                 crop_img = I[max(1,bbox[1]-int(0.1*bbox[3])):s1, max(1,int(bbox[0]-0.1*bbox[2])):s2]
+                
+#                 # plt.axis('off')
+#                 # plt.imshow(I)
+#                 # plt.show()
+                
+#                 # plt.axis('off')
+#                 # plt.imshow(crop_img)
+#                 # plt.show()
+#                 if bbox[3]>25 and bbox[2]>25:
+                    
+#                     bod=np.reshape(body_points,(17,3))
+#                     bod[:,2]=np.zeros((17,))
+#                     for x in range(0,17):
+#                         if bod[x,0]>0 and bod[x,1]>0:
+#                             bod[x,1]=bod[x,1]-max(1,bbox[1]-int(0.1*bbox[3]))
+#                             if bod[x,1]<0:
+#                                 save_cond=0
+#                                 print('Errrorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',x)
+#                                 # time.sleep(2)
+#                             if bod[x,1]>250:
+#                                 imres=1 
+#                             bod[x,0]=bod[x,0]-max(1,int(bbox[0]-0.1*bbox[2]))
+#                             if bod[x,0]<0:
+#                                 save_cond=0
+#                                 print('Errrorrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr',x)
+#                             if bod[x,0]>250:
+#                                 imres=1
+#                     if save_cond==1:
+#                         file_names.append(persons_img_path_all+'cropped_'+str(c0).zfill(2)+'_'+str(k).zfill(8)+'_'+im['file_name'])
+#                         if imres==0:
+#                             cv2.imwrite(persons_img_path_all+'cropped_'+str(c0).zfill(2)+'_'+str(k).zfill(8)+'_'+im['file_name'],crop_img)
+#                         else:
+                            
+                            
+                            
+#                             scale=max(crop_img.shape[1]/250,crop_img.shape[0]/250)
+                            
+#                             width = int(crop_img.shape[1]/scale)
+#                             height = int(crop_img.shape[0] /scale)
+                            
+#                             # dsize
+#                             dsize = (width, height)
+#                             bod=bod/scale
+#                             # resize image
+#                             output = cv2.resize(crop_img, dsize)
+#                             cv2.imwrite(persons_img_path_all+'cropped_'+str(c0).zfill(2)+'_'+str(k).zfill(8)+'_'+im['file_name'],output)
+              
+                                    
+#                         label[counter,:,:]=bod.astype(float)
+#                         counter=counter+1
+
+
+                    
+#             c0=c0+1
+            
+label1=label[0:counter,:,:]
+
+np.save('cocos.npy', label1) 
+np.save('files.npy',file_names)
+
+
+# images = coco.loadImgs(temp1)
+
+# for im in images:
+#     img_data = requests.get(im['coco_url']).content
+#     with open('persons/coco' + im['file_name'], 'wb') as handler:
+#         handler.write(img_data)
+        
+        
+
+
+
+
+
+
+# cats = coco.loadCats(coco.getCatIds())
+# nms=[cat['name'] for cat in cats]
+# print('COCO categories: \n{}\n'.format(' '.join(nms)))
+
+# nms = set([cat['supercategory'] for cat in cats])
+# print('COCO supercategories: \n{}'.format(' '.join(nms)))
+
+# catIds = coco.getCatIds(catNms=['person']);
+# imgIds = coco.getImgIds(catIds=catIds );
+# imgIds1 = coco.getImgIds(524289)
+# img = coco.loadImgs(imgIds1[np.random.randint(0,len(imgIds1))])[0]
+
+# I = io.imread(img['coco_url'])
+
+# plt.axis('off')
+# plt.imshow(I)
+# plt.show()
+
+
+# # annFile = 'annotations/person_keypoints_{}.json'.format(dataType)
+# # coco_kps=COCO(annFile)
+
+# annFile = 'annotations/coco_wholebody_train_v1.0.json'
+# coco_kps=COCO(annFile)
+# # coco=COCO(annFile)
+
+# plt.imshow(I); plt.axis('off')
+# ax = plt.gca()
+# annIds = coco_kps.getAnnIds(imgIds=183020, iscrowd=None)
+# anns = coco_kps.loadAnns(438021)
+# coco_kps.showAnns(anns)
+
+
+# # get all images for person
+# catIds = coco.getCatIds(catNms=['person'])
+# # Get the corresponding image ids and images using loadImgs
+# imgIds = coco.getImgIds(catIds=catIds)
+# images = coco.loadImgs(imgIds)
+
+# for im in images:
+#     img_data = requests.get(im['coco_url']).content
+#     with open('persons/coco' + im['file_name'], 'wb') as handler:
+#         handler.write(img_data)
+
+
+
+# # from tqdm import tqdm_notebook as tqdm
+# # Id_counts={}
+# # for k in range(80):
+# #     Id_counts[names.values[k][0]]=0
+# # for i in tqdm(range(len(train_dataset))):
+# #     train_image, train_label = train_dataset[i]
+# #     bounding_boxes = train_label[:, :4]
+# #     class_ids = train_label[:, 4:5]
+# #     for j in range(80):
+# #         if j in class_ids:
+# #             Id_counts[names.values[j][0]]+=1
+# # print(Id_counts)
+
+
+# # download all persons images using the updated 200+k annotations
+
+# ann_dict=coco_kps.anns
+# my_list=[]
+
+# for i in ann_dict.keys():
+#     temp=ann_dict[i]
+    
+#     my_list.append(temp['image_id'])
+
+# set_my_list=set(my_list)
+
+# imgIds1 = coco.getImgIds(my_list)
+# images = coco.loadImgs(imgIds1)
+
+
+# imgIds1 = coco.getImgIds(my_list[0])
+
+# counter=0
+# for im in images:
+#     counter=counter+1
+#     if counter<10:
+#         print('counter: '+str(counter))
+
+#         img_data = requests.get(im['coco_url']).content
+#         with open('persons/coco' + im['file_name'], 'wb') as handler:
+#             handler.write(img_data)
+            
+#         with open('persons_sorted/coco' + str(i).zfill(7)+'.jpg', 'wb') as handler:
+#             handler.write(img_data)
+
+
+
+
+# #here
+# counter=0
+# for i in my_list:
+#     counter=counter+1
+#     if counter<10:
+#         print('counter= ',counter)
+#         print(i)
+#         imgIds1 = coco.getImgIds(my_list[i])
+#         images = coco.loadImgs(imgIds1)
+
+
+
+
+#         # annIds = coco_kps.getAnnIds(imgIds=i, iscrowd=None)
+        
+#         # imgIds1 = coco.getImgIds(annIds )
+#     # for im in images:
+#         img_data = requests.get(images['coco_url']).content
+#         with open('persons/coco' + images['file_name'], 'wb') as handler:
+#             handler.write(img_data)
+#         with open('persons1/coco' + images['file_name'], 'wb') as handler:
+#             handler.write(img_data)
+            
+            
+            
+            
+            
+            
+            
+
+
+#     if counter<10:
+        
+        
+# print('counter= ',counter)
+# print(i)
+# imgIds1 = coco.getImgIds((i))
+# images = coco.loadImgs(imgIds1)
+# # for im in images:
+# img_data = requests.get(images['coco_url']).content
+# with open('persons/coco' + images['file_name'], 'wb') as handler:
+#     handler.write(img_data)
+# with open('persons1/coco' + images['file_name'], 'wb') as handler:
+#     handler.write(img_data)
