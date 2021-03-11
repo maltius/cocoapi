@@ -12,10 +12,10 @@ import matplotlib.pyplot as plt
 import time
 import numpy as np
 
-path = '/mnt/sda1/downloads/ai-challenger/ai_challenger_keypoint_train_20170902/'
-jpeg_path = '/mnt/sda1/downloads/ai-challenger/ai_challenger_keypoint_train_20170902/keypoint_train_images_20170902'
-file_name = 'keypoint_train_annotations_20170902.json'
-path_save = '/mnt/sda1/downloads/cocoapi-master/PythonAPI/aic_persons_17_single/'
+path = '/mnt/sda1/downloads/ai-challenger/ai_challenger_keypoint_validation_20170911/'
+jpeg_path = '/mnt/sda1/downloads/ai-challenger/ai_challenger_keypoint_validation_20170911/keypoint_validation_images_20170911'
+file_name = 'keypoint_validation_annotations_20170911.json'
+path_save = '/mnt/sda1/downloads/cocoapi-master/PythonAPI/aic_persons_17_val/'
 
 labels_raw = json.loads(open(os.path.join(path,file_name)).read()) 
 labels=np.zeros((750000,17,3))
@@ -29,7 +29,7 @@ for ind in range(0,len(labels_raw)):
         print(ind)
     for j in range(len(data_peak['human_annotations'].keys())):
         # try:
-        if I is not None and len(data_peak['human_annotations'].keys())==1:
+        if I is not None:
             next_one='human'+str(j+1)
             labels_temp=data_peak['keypoint_annotations'][next_one]
             labels_arr=np.copy(np.array(labels_temp).reshape(14,3))
@@ -62,12 +62,12 @@ for ind in range(0,len(labels_raw)):
             nonzeroind = np.nonzero(labels_arr) 
             save_cond=1
             imres=0
-            
-            # if nonzeroind[0].shape[0]>25.5 and I is not None:
-            # if min((wid1,len1))>30 and nonzeroind[0].shape[0]>41.5:   #labels_arr[0,0]*labels_arr[3,0]*labels_arr[6,0]*labels_arr[9,0]>0:
             mids_extended = (labels_arr[13,0]+labels_arr[13,1])*(labels_arr[6,0]+labels_arr[6,1])*(labels_arr[9,0]+labels_arr[9,1])
+
+            # if nonzeroind[0].shape[0]>25.5 and I is not None:
+            if min((wid1,len1))>30 and nonzeroind[0].shape[0]>41.5:   #labels_arr[0,0]*labels_arr[3,0]*labels_arr[6,0]*labels_arr[9,0]>0:
             # if True:
-            if min((wid1,len1))>30 and  mids_extended>0:
+            # if min((wid1,len1))>30 and  mids_extended>0:
                 file_name.append(image_ind+'.jpeg')
                 
                 
@@ -90,16 +90,16 @@ for ind in range(0,len(labels_raw)):
                 cv2.imwrite(os.path.join(path_save,image_ind)+'.jpeg',img_part)
                 c=c+1
                 
-        # except:
+        # except:h
         #     pass
             
 
 if False:
     new_labels1=labels[0:c,:,:]
     
-    np.save('data_configs_aic/aic_pre_cropped_17_single.npy',new_labels1)
+    np.save('data_configs_aic/aic_pre_cropped_17_val.npy',new_labels1)
     new_file_name=np.array(file_name)
-    np.save('data_configs_aic/files_aic_pre_cropped_17_single.npy',np.array(new_file_name))  
+    np.save('data_configs_aic/files_aic_pre_cropped_17_val.npy',np.array(new_file_name))  
 
             
 if False: 

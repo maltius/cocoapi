@@ -8,22 +8,28 @@ import matplotlib.pyplot as plt
 import time
 import h5py
 
-keyp=17 
+keyp=13
 
-path='/datadrive1/pre_processed_HM/files_aic_17_cropped_single/'
+path='/datadrive1/pre_processed_HM/files_aal_mids_cropped_resized/'
 
-X_train_filenames2=np.load('/mnt/sda1/downloads/BlazePose-tensorflow-master/data_configs_aic/files_aic_17_cropped_resized_single.npy')
-label3= np.load('/mnt/sda1/downloads/BlazePose-tensorflow-master/data_configs_aic/aic_17_croped_resized_single.npy')
+X_train_filenames2=np.load('/datadrive/downloads/cocoapi-master/PythonAPI/openpose/tf-pose-estimation/data_configs_op/files_aal_aligned_humans_coco.npy')
+label33= np.load('/datadrive/downloads/cocoapi-master/PythonAPI/openpose/tf-pose-estimation/data_configs_op/aal_aligned_humans_coco.npy')
 
 spec_name='what_to_name'
 
+label3=np.zeros((label33.shape[0],13,2))
+for w in range(label33.shape[0]):
+    
+    for q in range(2,14):
+        label3[w,q-2,:]=label33[w,q,:]
+    label3[w,12,:]=label33[w,1,:]
 
 # capped= 230000
 # X_train_filenames2=X_train_filenames2[0:capped]
 # label3=label3[0:capped,:,:]
 
 
-in_sam=10010
+in_sam=10011
 I=cv2.imread(X_train_filenames2[in_sam]).astype(np.uint8)
 plt.axis('off')
 plt.imshow(I)
@@ -31,7 +37,7 @@ plt.show()
 
 skeleton = label3[in_sam,:,:].astype(int)
 for i in range(keyp):
-    cv2.circle(I, center=tuple(skeleton[i][0:2]), radius=1, color=(255, 0, 0), thickness=2)
+    cv2.circle(I, center=tuple(skeleton[i][0:2]), radius=5, color=(255, 0, 0), thickness=2)
 plt.axis('off')
 plt.imshow(I)
 plt.show()
@@ -85,7 +91,7 @@ if True:
         
         data = np.zeros([tot_data, 256, 256, 3])
         if train_mode==0:
-            heatmap_set = np.zeros((tot_data, 128, 128, 17), dtype=np.float32)
+            heatmap_set = np.zeros((tot_data, 128, 128, 13), dtype=np.float32)
         
         to_be_omitted=list()
         reduce_it=0
@@ -109,7 +115,7 @@ if True:
                 label[i, :, 1] *= (256 / img_shape[0])
 
                 if train_mode==0:
-                    for j in range(17):
+                    for j in range(13):
                         _joint = (label[i, j, 0:2] // 2).astype(np.uint16)
                         # print(_joint)
                         heatmap_set[i, :, :, j] = getGaussianMap(joint = _joint, heat_size = 128, sigma = 4)
@@ -124,7 +130,7 @@ if True:
         if reduce_it==1:
             data1= np.zeros([tot_data-len(to_be_omitted), 256, 256, 3])
             if train_mode==0:
-                heatmap_set1 = np.zeros((tot_data-len(to_be_omitted), 128, 128, 17), dtype=np.float32)
+                heatmap_set1 = np.zeros((tot_data-len(to_be_omitted), 128, 128, 13), dtype=np.float32)
                 label1 = np.zeros((label.shape[0]-len(to_be_omitted),label.shape[1],label.shape[2]))
 
             else:

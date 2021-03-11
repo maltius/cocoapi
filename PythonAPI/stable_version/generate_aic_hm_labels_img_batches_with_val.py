@@ -1,4 +1,3 @@
-import os
 import tensorflow as tf
 from pynvml import *
 import tensorflow.keras as keras
@@ -6,14 +5,27 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import time
-import h5py
 
 keyp=17 
 
-path='/datadrive1/pre_processed_HM/files_aic_17_cropped_single/'
+path='/datadrive1/pre_processed_HM/filess_aic_17_cropped_resized/'
 
-X_train_filenames2=np.load('/mnt/sda1/downloads/BlazePose-tensorflow-master/data_configs_aic/files_aic_17_cropped_resized_single.npy')
-label3= np.load('/mnt/sda1/downloads/BlazePose-tensorflow-master/data_configs_aic/aic_17_croped_resized_single.npy')
+X_train_filenames21=np.load('/mnt/sda1/downloads/BlazePose-tensorflow-master/data_configs_aic/files_aic_17_cropped_resizedn.npy')
+label31= np.load('/mnt/sda1/downloads/BlazePose-tensorflow-master/data_configs_aic/aic_17_croped_resizedn.npy')
+
+X_train_filenames22=np.load('/mnt/sda1/downloads/BlazePose-tensorflow-master/data_configs_aic/files_aic_17_cropped_resized_valn.npy')
+label32= np.load('/mnt/sda1/downloads/BlazePose-tensorflow-master/data_configs_aic/aic_17_croped_resized_valn.npy')
+
+p_b='/mnt/sda1/downloads/cocoapi-master/PythonAPI/aic_persons_17_val/'
+
+# X_train_filenames221=list([])
+# for p in range(X_train_filenames22.shape[0]):
+#     X_train_filenames221.append(p_b+X_train_filenames22[p])
+# X_train_filenames221=np.array(X_train_filenames221)
+    
+X_train_filenames2=np.concatenate((X_train_filenames22,X_train_filenames21),axis=0) 
+label3=np.concatenate((label32,label31),axis=0) 
+
 
 spec_name='what_to_name'
 
@@ -23,7 +35,7 @@ spec_name='what_to_name'
 # label3=label3[0:capped,:,:]
 
 
-in_sam=10010
+in_sam=300000
 I=cv2.imread(X_train_filenames2[in_sam]).astype(np.uint8)
 plt.axis('off')
 plt.imshow(I)
@@ -31,7 +43,22 @@ plt.show()
 
 skeleton = label3[in_sam,:,:].astype(int)
 for i in range(keyp):
-    cv2.circle(I, center=tuple(skeleton[i][0:2]), radius=1, color=(255, 0, 0), thickness=2)
+    cv2.circle(I, center=tuple(skeleton[i][0:2]), radius=3, color=(255, 0, 0), thickness=2)
+plt.axis('off')
+plt.imshow(I)
+plt.show()
+
+time.sleep(5)
+
+in_sam=300
+I=cv2.imread(X_train_filenames2[in_sam]).astype(np.uint8)
+plt.axis('off')
+plt.imshow(I)
+plt.show()
+
+skeleton = label3[in_sam,:,:].astype(int)
+for i in range(keyp):
+    cv2.circle(I, center=tuple(skeleton[i][0:2]), radius=3, color=(255, 0, 0), thickness=2)
 plt.axis('off')
 plt.imshow(I)
 plt.show()
@@ -74,6 +101,7 @@ def getGaussianMap(joint = (16, 16), heat_size = 128, sigma = 2):
     
 if True:
     for idx in range(int(filenames.shape[0]/128)):
+        print('Idx {} out of {} batches'.format(idx,int(filenames.shape[0]/128)))
         batch_x = filenames[idx * 128 : (idx+1) * 128]
         batch_y = labels[idx * 128 : (idx+1) * 128,:,:]
 
@@ -92,7 +120,8 @@ if True:
         for i in range(tot_data):
             try:
                 if i==0:
-                    print('processing batch')
+                    pass
+                    # print('processing batch')
                 # FileName = "./dataset/lsp/images/im%04d.jpg" % (i + 1)
                 FileName = batch_x[i]
                 # FileName=FileName[0:45]+"aligned_"+FileName[45:]
@@ -119,7 +148,7 @@ if True:
                 pass
                 to_be_omitted.append(i)
                 reduce_it=1
-                print(i)
+                # print(i)
                 
         if reduce_it==1:
             data1= np.zeros([tot_data-len(to_be_omitted), 256, 256, 3])
